@@ -22,7 +22,7 @@ from model_config import ENCODER_OUTPUT_DIM
 from model.llm.TimeSeriesLLM import TimeSeriesLLM
 from prompt.full_prompt import FullPrompt
 from time_series_datasets.util import (
-    extend_time_series_to_match_patch_size_and_aggregate,
+    extend_time_series_to_match_patch_size_and_aggregate, 
 )
 
 # Monkey-patch FlamingoLayer to add attention_type property for compatibility with newer transformers

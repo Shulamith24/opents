@@ -166,6 +166,13 @@ class HARCoTQADataset(QADataset):
         ]
 
     def _format_sample(self, row):
+        """return {
+            "answer": self.answer,
+            "post_prompt": self.post_prompt.get_text(),
+            "pre_prompt": self.pre_prompt.get_text(),
+            "time_series": self.text_time_series_prompt_time_series,列表
+            "time_series_text": self.text_time_series_prompt_texts,列表
+        }"""
         sample = super()._format_sample(row)
         sample["label"] = row["label"]
         sample["x_axis"] = row["x_axis"]

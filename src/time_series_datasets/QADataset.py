@@ -48,6 +48,7 @@ class QADataset(Dataset, ABC):
            
             from tqdm import tqdm
             
+            #row代表第一个样本，字典，包含"x/y/z_axis, label, prompt, rationale"
             print("Formatting training samples...")
             self.__class__._train_dataset = list(tqdm(map(format_function, train), total=len(train), desc="Training samples"))
             
@@ -96,18 +97,21 @@ class QADataset(Dataset, ABC):
         if not answer.endswith(self.EOS_TOKEN):
             answer += self.EOS_TOKEN
 
-        return PromptWithAnswer(
-            TextPrompt(self._get_pre_prompt(row).strip()),
-            self._get_text_time_series_prompt_list(row),
-            TextPrompt(self._get_post_prompt(row).strip()),
+        formatted_sample = PromptWithAnswer(
+            TextPrompt(self._get_pre_prompt(row).strip()),  #前置提示：任务描述
+            self._get_text_time_series_prompt_list(row),    #时间序列部分，TextPrompt对象列表[序列1的介绍字符+均值方差+数值序列]
+            TextPrompt(self._get_post_prompt(row).strip()), #后置提示：格式要求和输出指令
             answer.strip(),
         ).to_dict()
+        return formatted_sample
 
+    #用于对比，将数值序列转化为字符
     def _format_sample_str(
         self, time_series_format_function: Callable[[np.ndarray], str] | None, row
     ):
         def fallback_timeseries_formatter(time_series: np.ndarray) -> str:
             # Fallback formatter for time series data
+            # 处理方式：每个数值保留两位小数，去掉小数点，用双引号包裹；元素之间用空格分隔
         
             return np.array2string(
                 time_series,
@@ -117,7 +121,7 @@ class QADataset(Dataset, ABC):
                 max_line_width=sys.maxsize,
             ).removeprefix("[").removesuffix("]")
 
-               
+
 
         if not time_series_format_function:
             time_series_format_function = fallback_timeseries_formatter
