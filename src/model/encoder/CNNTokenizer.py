@@ -15,6 +15,12 @@ from model.encoder.TimeSeriesEncoderBase import TimeSeriesEncoderBase
 
 
 class CNNTokenizer(TimeSeriesEncoderBase):
+    """
+    use 1d CNN to patch the time series
+    input: (B, L)
+    output: (B, N, embed_dim)
+    """
+    
     def __init__(
         self,
         output_dim: int = ENCODER_OUTPUT_DIM,
@@ -68,7 +74,7 @@ class CNNTokenizer(TimeSeriesEncoderBase):
                 f"Sequence length {L} not divisible by patch_size {self.patch_size}"
             )
 
-        # reshape to (B, 1, L)
+        # reshape to (B, 1, L), conv1d accept (B, C, L)
         x = x.unsqueeze(1)
 
         # conv patch embedding -> (B, embed_dim, N)

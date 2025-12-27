@@ -74,24 +74,22 @@ CURRICULUM_STAGES = [
 
 class CurriculumTrainer:
     """
-    Curriculum learning trainer for OpenTSLM models.
-    Trains models stage by stage with shared training logic.
-    While this may look like a lot of code, it's actually quite modular.
-    We simply train either OpenTSLMSP or OpenTSLMFlamingo, both using the same training loop.
-    We train across different stages:
-    - stage1_mcq: Trains the model on a time-series MCQ dataset (TSQA)
-    - stage2_captioning: Trains the model on a time-series captioning dataset (M4 time series captioning)
-    - stage3_cot: Trains the model on a chain-of-thought reasoning dataset (HAR CoT)
-    - stage4_sleep_cot: Trains the model on sleep stage classification with chain-of-thought reasoning
-    - stage5_ecg_cot: Trains the model on ECG QA with chain-of-thought reasoning
-
-    Features:
-    - Automatic loss history tracking saved to loss_history.txt in each stage's checkpoints directory
-    - Loss history is appended to when resuming training, preserving all previous epochs
-    - Displays previous loss history when resuming training
-
-    If you run this script, you should be able to reproduce our results from the paper.
-    All datasets are automatically downloaded and processed.
+    OpenTSLM 模型的课程学习训练器。
+    分阶段训练模型,训练逻辑共享。
+    虽然这看起来代码量很大,但实际上模块化程度很高。
+    我们只需训练 OpenTSLMSP 或 OpenTSLMFlamingo,两者都使用相同的训练循环。
+    我们在不同阶段进行训练:
+    stage1_mcq:在时间序列 MCQ 数据集(TSQA)上训练模型
+    stage2_captioning:在时间序列 captioning 数据集(M4 时间序列 captioning)上训练模型
+    stage3_cot:在思维链推理数据集(HAR CoT)上训练模型
+    stage4_sleep_cot:在带思维链推理的睡眠阶段分类任务上训练模型
+    stage5_ecg_cot:在带思维链推理的心电图问答任务上训练模型
+    特点:
+    自动跟踪损失历史,并保存到每个阶段检查点目录下的 loss_history.txt 中
+    恢复训练时会追加损失历史,保留所有之前的轮次
+    恢复训练时显示之前的损失历史
+    如果运行此脚本,您应该能够复现我们论文中的结果。
+    所有数据集都会自动下载和处理。
     """
 
     def _sanitize_llm_id(self, llm_id: str) -> str:
@@ -119,14 +117,13 @@ class CurriculumTrainer:
         """
         Initialize the curriculum trainer.
 
-        Args:
-            model_type: Either 'OpenTSLMSP' or 'OpenTSLMFlamingo'
-            device: Device to use for training ('cuda', 'mps', or 'cpu')
-            gradient_checkpointing: Enable gradient checkpointing
-            dist_url: URL used to set up distributed training
-            dist_backend: Distributed backend
-            local_rank: Local GPU rank
-            llm_id: LLM model ID (e.g., 'google/medgemma-2b', 'meta-llama/Llama-3.2-1B')
+        model_type:要么是 'OpenTSLMSP',要么是 'OpenTSLMFlamingo'
+        device:用于训练的设备('cuda'、'mps' 或 'cpu')
+        gradient_checkpointing:启用梯度检查点
+        dist_url:用于设置分布式训练的 URL
+        dist_backend:分布式后端
+        local_rank:本地 GPU 排名
+        llm_id:LLM 模型 ID(例如,'google/medgemma-2b'、'meta-llama/Llama-3.2-1B')
         """
         self.model_type = model_type
         self.device = device or self._get_device()
@@ -137,7 +134,7 @@ class CurriculumTrainer:
         self.llm_id = llm_id
         self.llm_id_safe = self._sanitize_llm_id(llm_id)
 
-        # Distributed training parameters
+        # 分布式训练参数
         self.gradient_checkpointing = gradient_checkpointing
         self.dist_url = dist_url
         self.dist_backend = dist_backend

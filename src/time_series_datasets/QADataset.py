@@ -18,7 +18,7 @@ from prompt.text_time_series_prompt import TextTimeSeriesPrompt
 from torch.utils.data import Dataset
 
 
-class QADataset(Dataset, ABC):
+class QADataset(Dataset, ABC):  #ABC抽象基类
     def __init__(
         self,
         split: Literal["train", "test", "validation"],
@@ -41,7 +41,7 @@ class QADataset(Dataset, ABC):
         """
         
         self.EOS_TOKEN = EOS_TOKEN
-        if not hasattr(self.__class__, "loaded"):
+        if not hasattr(self.__class__, "loaded"):   #避免train/test_ds = Dataset(split='')
             train, val, test = self._load_splits()
 
             format_function = partial(self._format_sample_str, time_series_format_function) if format_sample_str else self._format_sample
