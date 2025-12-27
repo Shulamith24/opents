@@ -29,10 +29,10 @@ class PromptWithAnswer:
         assert isinstance(answer, str), "Answer must be a string."
 
         self.pre_prompt = pre_prompt
-        self.text_time_series_prompt_texts = list(
+        self.text_time_series_prompt_texts = list(      # 文本部分列表
             map(lambda x: x.get_text(), text_time_series_prompt_list)
         )
-        self.text_time_series_prompt_time_series = list(
+        self.text_time_series_prompt_time_series = list(    # 时间序列部分列表
             map(lambda x: x.get_time_series(), text_time_series_prompt_list)
         )
         self.post_prompt = post_prompt

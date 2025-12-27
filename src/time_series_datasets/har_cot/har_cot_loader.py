@@ -211,6 +211,6 @@ if __name__ == "__main__":
                 else:
                     print(f"{key}: {value}")
             elif key == 'rationale':
-                print(f"{key}: {value[:100]}..." if len(str(value)) > 100 else f"{key}: {value}")
+                print(f"{key}: {value[:]}..." if len(str(value)) > 100 else f"{key}: {value}")
             else:
                 print(f"{key}: {value}") 

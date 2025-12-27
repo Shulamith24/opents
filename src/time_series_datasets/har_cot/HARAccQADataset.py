@@ -57,14 +57,14 @@ class HARAccQADataset(QADataset):
     def _get_post_prompt(self, _row) -> str:
         activities = ", ".join(self.get_labels())
         text = f"""
-Instructions:
-- Begin by analyzing the time series without assuming a specific label.
-- Think step-by-step about what the observed patterns suggest regarding movement intensity and behavior.
-- Write your rationale as a single, natural paragraph — do not use bullet points, numbered steps, or section headings.
-- Do **not** mention any class label until the final sentence.
-The following activities (class labels) are possible: {activities}
-- You MUST end your response with "Answer: <class label>"
-"""
+        Instructions:
+        - Begin by analyzing the time series without assuming a specific label.
+        - Think step-by-step about what the observed patterns suggest regarding movement intensity and behavior.
+        - Write your rationale as a single, natural paragraph — do not use bullet points, numbered steps, or section headings.
+        - Do **not** mention any class label until the final sentence.
+        The following activities (class labels) are possible: {activities}
+        - You MUST end your response with "Answer: <class label>"
+        """
         return text
 
     def _get_text_time_series_prompt_list(self, row) -> List[TextTimeSeriesPrompt]:
@@ -72,6 +72,7 @@ The following activities (class labels) are possible: {activities}
         Convert the time series data into a list of TextTimeSeriesPrompt objects.
         Does not normalize the data.
         """
+        #一个样本的二维数据tensor
         series = torch.tensor(
             [
                 row["x_axis"],
@@ -80,7 +81,7 @@ The following activities (class labels) are possible: {activities}
             ],
             dtype=torch.float32,
         )
-
+        #返回三个TextTimeSeriesPrompt对象的列表，每个对象的label和timeseries属性是这个样本的对应值
         return [
             TextTimeSeriesPrompt(time_series_label, time_series)
             for time_series_label, time_series in zip(

@@ -120,18 +120,18 @@ class ECGQACoTQADataset(QADataset):
         
         base_prompt = f"""You are an expert cardiologist analyzing an ECG (electrocardiogram). 
 
-Clinical Context: {clinical_context}
+        Clinical Context: {clinical_context}
 
-Your task is to examine the ECG signal and answer the following medical question:
+        Your task is to examine the ECG signal and answer the following medical question:
 
-Question: {question}
+        Question: {question}
 
-Instructions:
-- Begin by analyzing the time series without assuming a specific answer.
-- Think step-by-step about what the observed patterns suggest regarding the cardiac condition.
-- Write your rationale as a single, natural paragraph — do not use bullet points, numbered steps, or section headings.
-- Do **not** mention any final answer until the very end.
-- Consider the ECG morphology, intervals, and any abnormalities that relate to the question."""
+        Instructions:
+        - Begin by analyzing the time series without assuming a specific answer.
+        - Think step-by-step about what the observed patterns suggest regarding the cardiac condition.
+        - Write your rationale as a single, natural paragraph — do not use bullet points, numbered steps, or section headings.
+        - Do **not** mention any final answer until the very end.
+        - Consider the ECG morphology, intervals, and any abnormalities that relate to the question."""
         
         
 
@@ -150,16 +150,16 @@ Instructions:
         if possible_answers:
             answers_text = ", ".join(possible_answers)
             prompt = f"""
-Based on your analysis of the ECG data, select your answer from the following options:
-{answers_text}
+                Based on your analysis of the ECG data, select your answer from the following options:
+                {answers_text}
 
-- Make sure that your last word is the answer. You MUST end your response with "Answer: "
-"""
+                - Make sure that your last word is the answer. You MUST end your response with "Answer: "
+                """
         else:
             prompt = """
-Based on your analysis of the ECG data, provide your answer.
-Make sure that your last word is the answer. You MUST end your response with "Answer: "
-"""
+                Based on your analysis of the ECG data, provide your answer.
+                Make sure that your last word is the answer. You MUST end your response with "Answer: "
+                """
         
         return prompt.strip()
 

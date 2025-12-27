@@ -72,6 +72,8 @@ def main():
             print(f"\n📝 Sample {i + 1}:")
             if 'pre_prompt' in sample:
                 print(f"   Question: {sample['pre_prompt']}")
+            print(f"   Time Series Text1: {sample['time_series_text'][0]}")
+            print(f"   Time Series: {sample['time_series'][0][:8]} ......")
             print(f"   Gold Answer: {sample.get('answer', 'N/A')}")
             print(f"   Model Output: {pred}")
             print("-" * 60)

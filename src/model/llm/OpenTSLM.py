@@ -46,7 +46,9 @@ class OpenTSLM:
         >>> response = model.eval_prompt(prompt)
     """
 
-    @classmethod
+    """类方法,可直接通过类引用。和Huggingface中的from_pretrained逻辑一致,工厂函数,
+    避免复杂的初始化过程：加载配置->加载权重-->加载模型-->移动模型"""
+    @classmethod    
     def load_pretrained(
         cls,
         repo_id: str,
@@ -71,7 +73,7 @@ class OpenTSLM:
             >>> prompt = FullPrompt(...)
             >>> response = model.eval_prompt(prompt)
         """
-        device = cls._get_device(device)
+        device = cls._get_device(device)    #cuda or cpu
         model_type = cls._detect_model_type(repo_id)
         checkpoint_path = cls._download_model_files(repo_id, cache_dir)
         base_llm_id = cls._get_base_llm_id(repo_id)
@@ -131,6 +133,7 @@ class OpenTSLM:
                 f"to indicate the model type."
             )
 
+    #TODO:学习所有的类方法
     @staticmethod
     def _download_model_files(repo_id: str, cache_dir: Optional[str] = None) -> str:
         """Download model checkpoint from Hugging Face Hub."""

@@ -111,7 +111,7 @@ class OpenTSLMSP(TimeSeriesLLM):
                 "down_proj",
             ]
 
-        # Create LoRA config
+        # 配置lora
         lora_config = LoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
@@ -122,11 +122,11 @@ class OpenTSLMSP(TimeSeriesLLM):
         )
 
         try:
-            # Apply LoRA to the model
+            # 挂载lora adapter
             self.llm = get_peft_model(self.llm, lora_config)
             self.lora_enabled = True
 
-            # Print LoRA info
+            # 打印可训练lora参数
             lora_params = sum(
                 p.numel()
                 for name, p in self.llm.named_parameters()

@@ -58,7 +58,7 @@ def extend_time_series_to_match_patch_size_and_aggregate(
             L = ts.size(0)
             if L < padded_len:
                 pad_amt = padded_len - L
-                ts = F.pad(ts, (0, pad_amt), mode="constant", value=0.0)
+                ts = F.pad(ts, (0, pad_amt), mode="constant", value=0.0)    #在末尾补0，2参数是填充的维度和数量
             else:
                 ts = ts[:padded_len]
             padded.append(ts)

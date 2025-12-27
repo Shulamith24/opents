@@ -1,8 +1,5 @@
 venv
-.venv
-
-
-
+.venv/
 __pycache__
 .DS_STORE
 **/.DS_STORE
@@ -15,4 +12,5 @@ data/
 *.zip
 ./__pycache__
 upload_to_huggingface.py
+
 data/
