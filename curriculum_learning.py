@@ -92,6 +92,7 @@ class CurriculumTrainer:
     所有数据集都会自动下载和处理。
     """
 
+    #标准化模型名，用于results中的目录名
     def _sanitize_llm_id(self, llm_id: str) -> str:
         """Sanitize llm_id for use in directory names (e.g., meta-llama/Llama-3.2-1B -> Llama3_2_1B)"""
         if not llm_id:
@@ -132,15 +133,15 @@ class CurriculumTrainer:
                 "🚨 Warning: Using MPS, might not be fully compatible with the model. Use CUDA for best results."
             )
         self.llm_id = llm_id
-        self.llm_id_safe = self._sanitize_llm_id(llm_id)
+        self.llm_id_safe = self._sanitize_llm_id(llm_id)    #每个stage都设置目录
 
         # 分布式训练参数
-        self.gradient_checkpointing = gradient_checkpointing
+        self.gradient_checkpointing = gradient_checkpointing #是否启用梯度检查点，hf模型已经封装好
         self.dist_url = dist_url
         self.dist_backend = dist_backend
         self.local_rank = local_rank
 
-        # Initialize distributed training if needed
+        # 初始化分布式训练
         self.rank = 0
         self.world_size = 1
         if self._should_use_distributed():
@@ -148,8 +149,8 @@ class CurriculumTrainer:
 
         self.model = self._initialize_model()
         self.results_dir = os.path.join("results", self.llm_id_safe, self.model_type)
-        self._create_results_dir()
-
+        self._create_results_dir()  #每个stage都设置目录
+    #cuda
     def _get_device(self) -> str:
         """Get the best available device."""
         if torch.cuda.is_available():
@@ -159,10 +160,11 @@ class CurriculumTrainer:
         else:
             return "cpu"
 
+    #初始化原始llama模型，并用ddp包装
     def _initialize_model(self):
         """Initialize the specified model type."""
         if self.model_type == "OpenTSLMSP":
-            model = OpenTSLMSP(llm_id=self.llm_id, device=self.device).to(self.device)
+            model = OpenTSLMSP(llm_id=self.llm_id, device=self.device).to(self.device)  #这里加载的是原始模型
 
         elif self.model_type == "OpenTSLMFlamingo":
             model = OpenTSLMFlamingo(
@@ -185,6 +187,7 @@ class CurriculumTrainer:
 
         return model
 
+    #Not Used 获取混合精度类型
     def _get_cast_dtype(self, precision: str):
         """Get cast dtype for mixed precision."""
         if precision == "bf16":
@@ -208,6 +211,7 @@ class CurriculumTrainer:
             os.makedirs(os.path.join(stage_dir, "checkpoints"), exist_ok=True)
             os.makedirs(os.path.join(stage_dir, "results"), exist_ok=True)
 
+    #定制每个部分的优化器，返回Adam(list)
     def _get_optimizer(
         self,
         batch_size: int = None,
@@ -227,7 +231,8 @@ class CurriculumTrainer:
             # Use provided learning rates or defaults
             encoder_lr = lr_encoder if lr_encoder is not None else LR_ENCODER
             projector_lr = lr_projector if lr_projector is not None else LR_PROJECTOR
-
+            
+            #参数分组，允许对不同部分使用不同的超参数(学习率，权重衰减)
             param_groups = [
                 {"params": enc_params, "lr": encoder_lr, "weight_decay": WEIGHT_DECAY},
                 {
@@ -237,7 +242,7 @@ class CurriculumTrainer:
                 },
             ]
 
-            # Add LoRA parameters if enabled
+            # OpenTSLMSP如果启用了Lora
             if hasattr(model, "lora_enabled") and model.lora_enabled:
                 lora_params = model.get_lora_parameters()
                 if lora_params:
@@ -301,6 +306,7 @@ class CurriculumTrainer:
                 lr=base_lr,
             )
 
+    #合并数据集，创建ddp采样器,返回ddp dataloader
     def _merge_data_loaders(
         self,
         datasets: List[Dataset],
@@ -310,7 +316,7 @@ class CurriculumTrainer:
         distribute_data: bool = False,
     ) -> DataLoader:
         """Create a merged data loader from multiple datasets."""
-        merged_ds = ConcatDataset(datasets)
+        merged_ds = ConcatDataset(datasets) #torch库用于合并列表数据集
 
         # Use distributed sampler if distributed training is enabled
         if distribute_data and dist.is_initialized():
@@ -335,6 +341,7 @@ class CurriculumTrainer:
                 ),
             )
 
+    #在主进程中保存模型，字典中包含encoder,proj,lora的参数状态(不包含大模型基座)
     def _save_checkpoint(
         self, stage: str, epoch: int, val_loss: float, optimizer, scheduler
     ):
@@ -466,6 +473,7 @@ class CurriculumTrainer:
             except Exception as e:
                 print(f"⚠️  Could not read loss history: {e}")
 
+    #加载本阶段之前的检查点
     def _load_checkpoint(
         self, stage: str, optimizer, scheduler, eval_only: bool = False
     ):
@@ -560,6 +568,7 @@ class CurriculumTrainer:
             )
         return None, float("inf")
 
+    #加载上一个阶段的模型，返回上一步的metric
     def _load_previous_stage_model(
         self, current_stage: str
     ) -> Optional[Dict[str, Any]]:
@@ -620,15 +629,15 @@ class CurriculumTrainer:
             )
             print("This might take a while")
             checkpoint = torch.load(
-                checkpoint_path, map_location="cpu", weights_only=False
+                checkpoint_path, map_location="cpu", weights_only=False #先加载到cpu上
             )
-            # Get the underlying model (handles DDP wrapping)
+            # 加载DDP模型
             model = self._get_model()
             if self.model_type == "OpenTSLMSP":
                 model.encoder.load_state_dict(checkpoint["encoder_state"])
                 model.projector.load_state_dict(checkpoint["projector_state"])
 
-                # Load LoRA state from previous stage (allow missing for stage transitions)
+                # 从上一步的检查点加载lora权重 (allow missing for stage transitions)
                 try:
                     loaded_count = model.load_lora_state_from_checkpoint(
                         checkpoint, allow_missing=True
@@ -865,6 +874,7 @@ class CurriculumTrainer:
 
         return metrics
 
+    #检查该阶段是否已经有过评估(是否存在metrics.json文件)
     def _is_evaluation_completed(self, stage: str) -> bool:
         """Check if evaluation was completed for a stage by looking for test predictions file."""
         test_predictions_file = os.path.join(
@@ -905,6 +915,7 @@ class CurriculumTrainer:
         if batch_size is None:
             batch_size = BATCH_SIZE
 
+        #打印训练信息
         if self.rank == 0:
             print(f"\n🚀 Starting {stage_name} Training with {self.model_type}")
             if eval_only:
@@ -928,7 +939,7 @@ class CurriculumTrainer:
                 f"Eval-only mode requires a checkpoint for {stage_name}, but none found at {os.path.join(self.results_dir, stage_name, 'checkpoints', 'best_model.pt')}"
             )
 
-        # Load previous stage model and display metrics
+        # 加载上一步的模型，打印上一步的metric
         try:
             previous_stage_info = self._load_previous_stage_model(stage_name)
             if previous_stage_info:
@@ -960,7 +971,7 @@ class CurriculumTrainer:
                 print(f"❌ Error loading previous stage: {e}")
             raise Exception(f"Error loading previous stage: {e}")
 
-        # Check if evaluation was already completed
+        # 检查该阶段是否已经有过评估(是否存在metrics.json等文件)
         evaluation_completed = self._is_evaluation_completed(stage_name)
         if evaluation_completed and self.rank == 0:
             print(
@@ -984,15 +995,15 @@ class CurriculumTrainer:
 
             return metrics
 
-        # Enable LoRA if needed for this stage
+        # 开启lora
         self._enable_lora_if_needed(stage_name)
 
-        # Initialize optimizer and scheduler
+        # 初始化优化器和调度器
         optimizer = self._get_optimizer(batch_size, lr_encoder, lr_projector, lr_base)
 
         # Create data loaders
         if sampler is not None:
-            if self.world_size > 1:
+            if self.world_size > 1:     #传入的一般是避免类别不均衡的BalancedBatchSampler，但多卡环境下直接使用DistributedSampler
                 get_logger().warning(
                     "BalancedBatchSampler was provided, but distributed training (DDP) is enabled. BalancedBatchSampler will NOT be used. Data will be sharded using DistributedSampler instead. Typically for stage3_cot it is better to use BalancedBatchSampler, if dataset is imbalanced."
                 )
@@ -1056,7 +1067,7 @@ class CurriculumTrainer:
             print(f"📈 Total training steps: {total_steps}")
             print(f"🔥 Warmup steps: {warmup_steps}")
 
-        # Load previous checkpoint if exists (for resuming current stage)
+        # 断点续传，加载之前的检查点
         best_epoch, best_val_loss = self._load_checkpoint(
             stage_name, optimizer, scheduler, eval_only=eval_only
         )
@@ -1082,7 +1093,7 @@ class CurriculumTrainer:
             epochs_no_improve = 0
             start_epoch = best_epoch + 1 if best_epoch is not None else 1
             for epoch in range(start_epoch, num_epochs + 1):
-                # Set epoch for distributed sampler
+                # Set epoch for distributed sampler, 用于在每个epoch开始时重新洗牌
                 if hasattr(train_loader.sampler, "set_epoch"):
                     train_loader.sampler.set_epoch(epoch)
 
@@ -1095,7 +1106,7 @@ class CurriculumTrainer:
                     disable=self.rank != 0,
                 )
                 for i, batch in enumerate(prog):
-                    # DEBUG PRINT: Only for the first batch of the first epoch
+                    # DEBUG PRINT: 在第一个epoch的第一个batch打印信息
                     if epoch == start_epoch and i == 0:
                         print(f"[DEBUG] Batch {i} - batch size: {len(batch)}")
                         if isinstance(batch, list) and isinstance(batch[0], dict):
@@ -1117,7 +1128,7 @@ class CurriculumTrainer:
                     loss = self._get_model().compute_loss(batch)
                     loss.backward()
 
-                    # Handle gradient clipping for distributed training
+                    # TODO: 学习梯度裁剪，大模型的梯度陡峭，不裁剪会使得loss变成NaN
                     clip_grad_norm_(self._get_model().parameters(), GRAD_CLIP_NORM)
 
                     optimizer.step()
@@ -1147,7 +1158,7 @@ class CurriculumTrainer:
 
                 avg_val_loss = val_loss / len(val_loader)
 
-                # Synchronize validation loss across all ranks
+                # 不同进程之间同步验证loss
                 if dist.is_initialized():
                     val_loss_tensor = torch.tensor(avg_val_loss, device=self.device)
                     dist.all_reduce(val_loss_tensor, op=dist.ReduceOp.SUM)
@@ -1160,7 +1171,7 @@ class CurriculumTrainer:
                 # Save loss history for this epoch
                 self._save_loss_history(stage_name, epoch, avg_train_loss, avg_val_loss)
 
-                # Early stopping - all ranks need to make the same decision
+                # 早停 - all ranks need to make the same decision
                 should_save = avg_val_loss + 1e-4 < best_val_loss
                 if dist.is_initialized():
                     save_tensor = torch.tensor(
@@ -1458,12 +1469,14 @@ class CurriculumTrainer:
 
         return results
 
+    #大于1张显卡就启动分布式
     def _should_use_distributed(self) -> bool:
         """Check if distributed training should be used."""
         return ("WORLD_SIZE" in os.environ and int(os.environ["WORLD_SIZE"]) > 1) or (
             "LOCAL_RANK" in os.environ and int(os.environ["LOCAL_RANK"]) >= 0
         )
-
+    
+    # 初始化分布式训练
     def _init_distributed(self):
         """Initialize distributed training."""
         if "WORLD_SIZE" in os.environ:
@@ -1473,7 +1486,7 @@ class CurriculumTrainer:
         elif "LOCAL_RANK" in os.environ:
             self.rank = int(os.environ["LOCAL_RANK"])
 
-        # Initialize process group
+        # 初始化分布式进程，是为了兼容非torchrun启动模式，现代方法只需要init_process_group(backend="nccl")
         dist.init_process_group(
             backend=self.dist_backend,
             init_method=self.dist_url,
@@ -1533,6 +1546,7 @@ class CurriculumTrainer:
         if self.rank == 0:
             print(f"✅ Stage {stage} marked as completed")
 
+    #从DDP模型中获取原始模型
     def _get_model(self):
         """Get the underlying model (handles DDP wrapping)."""
         if hasattr(self.model, "module"):
@@ -1545,41 +1559,6 @@ class CurriculumTrainer:
             self.results_dir, stage, "checkpoints", "best_model.pt"
         )
         return os.path.exists(checkpoint_path)
-
-    def _enable_lora_if_needed(self, stage_name: str):
-        """Enable LoRA for OpenTSLMSP models in stages after stage2."""
-        if self.model_type != "OpenTSLMSP":
-            return  # LoRA only for OpenTSLMSP
-
-        # Get the underlying model (handles DDP wrapping)
-        model = self._get_model()
-
-        # Enable LoRA for stages after stage2_captioning
-        stages_with_lora = ["stage3_cot", "stage4_sleep_cot", "stage5_ecg_cot"]
-
-        if stage_name in stages_with_lora:
-            if not getattr(model, "lora_enabled", False):
-                if self.rank == 0:
-                    print(f"🔧 Enabling LoRA for {stage_name}")
-                try:
-                    model.enable_lora(lora_r=16, lora_alpha=32, lora_dropout=0.0)
-                    if self.rank == 0:
-                        print(f"✅ LoRA enabled for {stage_name}")
-                except Exception as e:
-                    if self.rank == 0:
-                        print(f"❌ Failed to enable LoRA for {stage_name}: {e}")
-                        print("   Continuing without LoRA...")
-            else:
-                if self.rank == 0:
-                    print(f"✅ LoRA already enabled for {stage_name}")
-        else:
-            if self.rank == 0:
-                if stage_name in ["stage1_mcq", "stage2_captioning"]:
-                    print(
-                        f"ℹ️  LoRA disabled for {stage_name} (only enabled for stages 3+)"
-                    )
-                else:
-                    print(f"ℹ️  LoRA not configured for {stage_name}")
 
     def _enable_lora_if_needed(self, stage_name: str):
         """Enable LoRA for OpenTSLMSP models in stages after stage2."""

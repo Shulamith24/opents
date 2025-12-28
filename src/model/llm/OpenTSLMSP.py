@@ -404,7 +404,8 @@ class OpenTSLMSP(TimeSeriesLLM):
         """
         checkpoint_has_lora = checkpoint.get("lora_enabled", False)
 
-        if checkpoint_has_lora and "lora_state" in checkpoint:
+        #加载LoRA状态
+        if checkpoint_has_lora and "lora_state" in checkpoint:#文件中有lora，现在的模型没有
             # Checkpoint has LoRA adapters
             if not self.lora_enabled:
                 raise RuntimeError(
@@ -418,13 +419,14 @@ class OpenTSLMSP(TimeSeriesLLM):
                 loaded_count = 0
                 missing_keys = []
 
-                # Track which LoRA parameters we expect to find
+                # 存储当前模型中需要加载的lora参数名
                 expected_lora_params = {
                     name
                     for name, param in self.llm.named_parameters()
                     if param.requires_grad and "lora_" in name
                 }
 
+                # 遍历参数，逐一加载Lora参数
                 for name, param in self.llm.named_parameters():
                     if name in lora_state and param.requires_grad and "lora_" in name:
                         param.data.copy_(lora_state[name])
