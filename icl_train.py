@@ -186,7 +186,17 @@ def get_optimizer(model, args):
                 "lr": args.lora_lr,
                 "weight_decay": args.weight_decay,
             })
-            print(f"📊 Added {len(lora_params)} LoRA parameters to optimizer")
+    
+    # Print training configuration
+    print(f"\n📊 Training Configuration:")
+    print(f"   ✅ Encoder: lr={args.lr_encoder:.2e} (trainable)")
+    print(f"   ✅ Projector: lr={args.lr_projector:.2e} (trainable)")
+    if hasattr(base_model, "lora_enabled") and base_model.lora_enabled:
+        lora_params = base_model.get_lora_parameters()
+        print(f"   ✅ LLM (LoRA): lr={args.lora_lr:.2e} ({len(lora_params)} params)")
+        print(f"   ❄️  LLM (base): frozen")
+    else:
+        print(f"   ❄️  LLM: frozen (no LoRA)")
     
     return AdamW(param_groups)
 

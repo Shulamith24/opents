@@ -76,23 +76,23 @@ class UCRICLDataset(Dataset):
     
     # System instruction template
     SYSTEM_PROMPT = """You are a time series classifier. Analyze the support examples and classify the query.
-Output ONLY the single letter label (e.g., A, B, C, ...).
+        Output ONLY the single letter label (e.g., A, B, C, ...).
 
-Possible labels: {labels}
+        Possible labels: {labels}
 
-Support Examples:"""
+        Support Examples:"""
 
     # Support example template
     SUPPORT_TEMPLATE = """
-Example {idx}:
-{ts_description}
-Label: {label}"""
+        Example {idx}:
+        {ts_description}
+        Label: {label}"""
 
     # Query template
     QUERY_TEMPLATE = """
-Query:
-{ts_description}
-Label:"""
+        Query:
+        {ts_description}
+        Label:"""
 
     def __init__(
         self,
@@ -148,12 +148,11 @@ Label:"""
         for idx, row in self.support_df.iterrows():
             self.support_by_label[int(row["label"])].append(idx)
         
-        # Validate k_shot
+        # Check for imbalanced classes (warn but don't fail)
         min_samples = min(len(indices) for indices in self.support_by_label.values())
         if k_shot > min_samples:
-            raise ValueError(
-                f"k_shot={k_shot} exceeds minimum samples per class ({min_samples})"
-            )
+            print(f"⚠️  Warning: k_shot={k_shot} exceeds minimum samples per class ({min_samples})")
+            print(f"   Some classes will use fewer than {k_shot} support examples.")
         
         # Set random state
         self.rng = random.Random(seed)
@@ -214,6 +213,9 @@ Label:"""
         """
         Sample K-shot support examples from each class.
         
+        For imbalanced datasets, if a class has fewer than k_shot samples,
+        all available samples from that class will be used.
+        
         Args:
             exclude_idx: Index to exclude (if query is from support pool)
         
@@ -229,13 +231,14 @@ Label:"""
             if exclude_idx is not None and exclude_idx in candidates:
                 candidates.remove(exclude_idx)
             
-            # Sample k_shot examples
-            if len(candidates) < self.k_shot:
-                raise ValueError(
-                    f"Not enough samples for label {label} after exclusion"
-                )
+            # Sample min(k_shot, available) examples for imbalanced datasets
+            num_to_sample = min(self.k_shot, len(candidates))
             
-            selected = self.rng.sample(candidates, self.k_shot)
+            if num_to_sample == 0:
+                print(f"⚠️  Warning: No available samples for label {label}")
+                continue
+            
+            selected = self.rng.sample(candidates, num_to_sample)
             
             for idx in selected:
                 sample = self._get_sample_data(idx, from_support=True)
