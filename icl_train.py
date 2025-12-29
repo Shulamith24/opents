@@ -110,6 +110,26 @@ def parse_args():
     parser.add_argument("--tslanet_depth", type=int, default=2, help="TSLANet depth")
     parser.add_argument("--tslanet_patch_size", type=int, default=8, help="TSLANet patch size")
     
+    # RAG arguments (M3)
+    parser.add_argument(
+        "--rag_mode", type=str, default="none",
+        choices=["none", "eval", "train"],
+        help="RAG mode: none=random support, eval=RAG for eval only, train=RAG for both"
+    )
+    parser.add_argument(
+        "--rag_index_path", type=str, default=None,
+        help="Path to prebuilt RAG index (required if rag_mode != none)"
+    )
+    parser.add_argument(
+        "--rag_method", type=str, default="faiss",
+        choices=["faiss", "brute"],
+        help="RAG index method"
+    )
+    parser.add_argument(
+        "--rag_top_m", type=int, default=50,
+        help="Top-M candidates for RAG retrieval"
+    )
+    
     return parser.parse_args()
 
 
@@ -453,25 +473,89 @@ def main():
         base_model.encoder = new_encoder.to(args.device)
         print(f"   ✅ TSLANet encoder loaded (depth={args.tslanet_depth}, patch_size={args.tslanet_patch_size})")
     
+    # Load RAG index if needed
+    rag_index = None
+    if args.rag_mode != "none":
+        if not args.rag_index_path:
+            raise ValueError("--rag_index_path required when rag_mode != none")
+        
+        print(f"\n📚 Loading RAG index from {args.rag_index_path}...")
+        from rag.rag_index import RAGIndex
+        rag_index = RAGIndex(method=args.rag_method)
+        rag_index.load(args.rag_index_path)
+    
     # Create datasets
     print(f"\n📊 Creating datasets...")
-    train_dataset = UCRICLDataset(
-        dataset_name=args.dataset,
-        split="train",
-        k_shot=args.k_shot,
-        EOS_TOKEN=base_model.get_eos_token(),
-        raw_data_path=args.data_path,
-        seed=args.seed,
-    )
+    print(f"   RAG mode: {args.rag_mode}")
     
-    test_dataset = UCRICLDataset(
-        dataset_name=args.dataset,
-        split="test",
-        k_shot=args.k_shot,
-        EOS_TOKEN=base_model.get_eos_token(),
-        raw_data_path=args.data_path,
-        seed=args.seed + 1,  # Different seed for test
-    )
+    if args.rag_mode == "train":
+        # Both train and test use RAG
+        from time_series_datasets.ucr.UCRRAGDataset import UCRRAGDataset
+        train_dataset = UCRRAGDataset(
+            rag_index=rag_index,
+            encoder=base_model.encoder,
+            device=args.device,
+            top_m=args.rag_top_m,
+            dataset_name=args.dataset,
+            split="train",
+            k_shot=args.k_shot,
+            EOS_TOKEN=base_model.get_eos_token(),
+            raw_data_path=args.data_path,
+            seed=args.seed,
+        )
+        test_dataset = UCRRAGDataset(
+            rag_index=rag_index,
+            encoder=base_model.encoder,
+            device=args.device,
+            top_m=args.rag_top_m,
+            dataset_name=args.dataset,
+            split="test",
+            k_shot=args.k_shot,
+            EOS_TOKEN=base_model.get_eos_token(),
+            raw_data_path=args.data_path,
+            seed=args.seed + 1,
+        )
+    elif args.rag_mode == "eval":
+        # Train uses random, test uses RAG
+        train_dataset = UCRICLDataset(
+            dataset_name=args.dataset,
+            split="train",
+            k_shot=args.k_shot,
+            EOS_TOKEN=base_model.get_eos_token(),
+            raw_data_path=args.data_path,
+            seed=args.seed,
+        )
+        from time_series_datasets.ucr.UCRRAGDataset import UCRRAGDataset
+        test_dataset = UCRRAGDataset(
+            rag_index=rag_index,
+            encoder=base_model.encoder,
+            device=args.device,
+            top_m=args.rag_top_m,
+            dataset_name=args.dataset,
+            split="test",
+            k_shot=args.k_shot,
+            EOS_TOKEN=base_model.get_eos_token(),
+            raw_data_path=args.data_path,
+            seed=args.seed + 1,
+        )
+    else:
+        # Both use random (original behavior)
+        train_dataset = UCRICLDataset(
+            dataset_name=args.dataset,
+            split="train",
+            k_shot=args.k_shot,
+            EOS_TOKEN=base_model.get_eos_token(),
+            raw_data_path=args.data_path,
+            seed=args.seed,
+        )
+        test_dataset = UCRICLDataset(
+            dataset_name=args.dataset,
+            split="test",
+            k_shot=args.k_shot,
+            EOS_TOKEN=base_model.get_eos_token(),
+            raw_data_path=args.data_path,
+            seed=args.seed + 1,
+        )
     
     num_classes = train_dataset.num_classes
     print(f"   Train samples: {len(train_dataset)}")
