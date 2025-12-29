@@ -419,21 +419,36 @@ def main():
         print(f"\n🔄 Replacing encoder with TSLANet...")
         from model.encoder.TSLANetEncoder import TSLANetEncoder
         
-        new_encoder = TSLANetEncoder(
-            output_dim=base_model.encoder.output_dim,
-            patch_size=args.tslanet_patch_size,
-            depth=args.tslanet_depth,
-            dropout=0.15,
-        )
-        
+        # Determine max_seq_len from checkpoint if provided
+        max_seq_len = 4096  # default
         if args.tslanet_checkpoint:
             print(f"   Loading pretrained weights from {args.tslanet_checkpoint}")
             state_dict = torch.load(args.tslanet_checkpoint, map_location="cpu", weights_only=True)
             # Handle both full checkpoint and state_dict only
             if "encoder_state" in state_dict:
-                new_encoder.load_state_dict(state_dict["encoder_state"])
+                encoder_state = state_dict["encoder_state"]
             else:
-                new_encoder.load_state_dict(state_dict)
+                encoder_state = state_dict
+            
+            # Infer max_seq_len from pos_embed shape
+            if "pos_embed" in encoder_state:
+                num_patches = encoder_state["pos_embed"].shape[1]
+                # Reverse calculate max_seq_len from num_patches
+                # num_patches = (seq_len - patch_size) / stride + 1, stride = patch_size // 2
+                stride = args.tslanet_patch_size // 2
+                max_seq_len = (num_patches - 1) * stride + args.tslanet_patch_size
+                print(f"   Inferred max_seq_len={max_seq_len} from checkpoint (num_patches={num_patches})")
+        
+        new_encoder = TSLANetEncoder(
+            output_dim=base_model.encoder.output_dim,
+            patch_size=args.tslanet_patch_size,
+            depth=args.tslanet_depth,
+            dropout=0.15,
+            max_seq_len=max_seq_len,
+        )
+        
+        if args.tslanet_checkpoint:
+            new_encoder.load_state_dict(encoder_state)
         
         base_model.encoder = new_encoder.to(args.device)
         print(f"   ✅ TSLANet encoder loaded (depth={args.tslanet_depth}, patch_size={args.tslanet_patch_size})")
