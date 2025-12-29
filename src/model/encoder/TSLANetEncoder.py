@@ -318,6 +318,10 @@ class TSLANetEncoder(TimeSeriesEncoderBase):
         """
         Forward pass for pretraining with masked reconstruction.
         
+        Matches original TSLANet pretrain logic:
+        - Target includes pos_embed and pos_drop
+        - Masking is done on x (with pos_embed, without pos_drop)
+        
         Args:
             x: FloatTensor of shape [B, L], raw time series.
             mask_ratio: Ratio of patches to mask.
@@ -328,14 +332,14 @@ class TSLANetEncoder(TimeSeriesEncoderBase):
         x = x.unsqueeze(1)  # [B, 1, L]
         
         # Get patch embeddings
-        x_patched = self.patch_embed(x)  # [B, N, D]
-        N = x_patched.size(1)
+        x = self.patch_embed(x)  # [B, N, D]
+        N = x.size(1)
         
         # Add positional embedding
-        x = x_patched + self.pos_embed[:, :N, :]
-        x = self.pos_drop(x)
+        x = x + self.pos_embed[:, :N, :]
+        x_patched = self.pos_drop(x)  # Target: includes pos_embed and pos_drop
         
-        # Random masking
+        # Random masking (on x, not x_patched, to match original)
         x_masked, mask = self._random_masking(x, mask_ratio)
         
         # Apply TSLANet layers

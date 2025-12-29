@@ -153,12 +153,8 @@ class UCRICLDataset(Dataset):
         for idx, row in self.support_df.iterrows():
             self.support_by_label[int(row["label"])].append(idx)
         
-<<<<<<< HEAD
-        # Check for imbalanced classes (warn but don't fail)
-=======
         # Validate k_shot
         # TODO: 兼容不平衡的类别样本
->>>>>>> 805a308 (results放入ignore)
         min_samples = min(len(indices) for indices in self.support_by_label.values())
         if k_shot > min_samples:
             print(f"⚠️  Warning: k_shot={k_shot} exceeds minimum samples per class ({min_samples})")
