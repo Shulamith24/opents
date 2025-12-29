@@ -131,8 +131,17 @@ class UCRRAGDataset(UCRICLDataset):
         
         # First pass: select from retrieved results by similarity order
         for idx in indices:
+            # Filter invalid indices (FAISS returns -1 for invalid)
+            if idx < 0:
+                continue
+            
             sample = self.rag_index.get_sample(int(idx))
             label = sample["label_int"]
+            
+            # Skip labels not in our unique_labels (shouldn't happen, but safety check)
+            if label not in self.unique_labels:
+                continue
+            
             label_str = int_to_label(label, self.unique_labels)
             
             if class_counts[label] < self.k_shot:
