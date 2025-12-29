@@ -17,6 +17,7 @@ where each sample contains:
 """
 
 import os
+import sys
 import random
 from typing import List, Literal, Tuple, Dict, Any, Optional
 from collections import defaultdict
@@ -24,6 +25,10 @@ from collections import defaultdict
 import torch
 import numpy as np
 from torch.utils.data import Dataset
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_path = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(src_path)
 
 from time_series_datasets.ucr.ucr_loader import load_ucr_dataset
 from prompt.text_time_series_prompt import TextTimeSeriesPrompt
@@ -127,7 +132,7 @@ class UCRICLDataset(Dataset):
         train_df, test_df = load_ucr_dataset(dataset_name, raw_data_path)
         
         # Get unique labels (sorted for consistent mapping)
-        all_labels = set(train_df["label"].tolist()) | set(test_df["label"].tolist())
+        all_labels = set(train_df["label"].tolist()) | set(test_df["label"].tolist())   #得到所有的unique标签
         self.unique_labels = sorted(list(all_labels))
         self.num_classes = len(self.unique_labels)
         self.label_letters = [chr(ord('A') + i) for i in range(self.num_classes)]
@@ -137,18 +142,23 @@ class UCRICLDataset(Dataset):
         
         # Set query and support pools based on split
         if split == "train":
-            self.query_df = train_df.reset_index(drop=True)
-            self.support_df = train_df.reset_index(drop=True)  # Sample support from train
+            self.query_df = train_df.reset_index(drop=True)    # 查询样本库
+            self.support_df = train_df.reset_index(drop=True)  # 作为检索库（包含所有训练数据）
         else:
             self.query_df = test_df.reset_index(drop=True)
             self.support_df = train_df.reset_index(drop=True)  # Sample support from train
         
-        # Build support pool indexed by label
+        # 建立哈希表索引，用于快速查找每个类别的样本
         self.support_by_label: Dict[int, List[int]] = defaultdict(list)
         for idx, row in self.support_df.iterrows():
             self.support_by_label[int(row["label"])].append(idx)
         
+<<<<<<< HEAD
         # Check for imbalanced classes (warn but don't fail)
+=======
+        # Validate k_shot
+        # TODO: 兼容不平衡的类别样本
+>>>>>>> 805a308 (results放入ignore)
         min_samples = min(len(indices) for indices in self.support_by_label.values())
         if k_shot > min_samples:
             print(f"⚠️  Warning: k_shot={k_shot} exceeds minimum samples per class ({min_samples})")

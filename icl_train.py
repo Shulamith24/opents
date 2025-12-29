@@ -21,7 +21,6 @@ Key Features:
 Usage:
     python icl_train.py --dataset ECG5000 --k_shot 1 --epochs 30
 
-Author: OpenTSLM Team
 """
 
 import sys
@@ -63,33 +62,16 @@ DEFAULT_CONFIG = {
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="M1 Ablation: ICL Time Series Classification"
-    )
+    parser = argparse.ArgumentParser(description="M1 Ablation: ICL Time Series Classification")
     
     # Dataset arguments
-    parser.add_argument(
-        "--dataset", type=str, default="ECG5000",
-        help="UCR dataset name (e.g., ECG5000)"
-    )
-    parser.add_argument(
-        "--k_shot", type=int, default=1,
-        help="Number of support examples per class"
-    )
-    parser.add_argument(
-        "--data_path", type=str, default="./data",
-        help="Path to UCR data directory"
-    )
+    parser.add_argument("--dataset", type=str, default="ECG5000", help="UCR dataset name (e.g., ECG5000)")
+    parser.add_argument("--k_shot", type=int, default=3,help="Number of support examples per class")
+    parser.add_argument("--data_path", type=str, default="./data", help="Path to UCR data directory")
     
     # Model arguments
-    parser.add_argument(
-        "--repo_id", type=str, default="OpenTSLM/llama-3.2-1b-m4-sp",
-        help="HuggingFace repository ID for pretrained model"
-    )
-    parser.add_argument(
-        "--device", type=str, default="cuda",
-        help="Device to use (cuda/cpu)"
-    )
+    parser.add_argument("--repo_id", type=str, default="OpenTSLM/llama-3.2-1b-m4-sp", help="HuggingFace repository ID for pretrained model")
+    parser.add_argument("--device", type=str, default="cuda", help="Device to use (cuda/cpu)")
     
     # Training arguments
     parser.add_argument("--epochs", type=int, default=DEFAULT_CONFIG["epochs"])
@@ -108,21 +90,12 @@ def parse_args():
     parser.add_argument("--lora_dropout", type=float, default=0.0, help="LoRA dropout")
     
     # Output arguments
-    parser.add_argument(
-        "--output_dir", type=str, default="./results/icl_m1",
-        help="Output directory for checkpoints and results"
-    )
+    parser.add_argument("--output_dir", type=str, default="./results/icl_m1",help="Output directory for checkpoints and results")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     
     # Evaluation arguments
-    parser.add_argument(
-        "--eval_only", action="store_true",
-        help="Only run evaluation (requires checkpoint)"
-    )
-    parser.add_argument(
-        "--checkpoint", type=str, default=None,
-        help="Path to checkpoint for evaluation"
-    )
+    parser.add_argument("--eval_only", action="store_true",help="Only run evaluation (requires checkpoint)")
+    parser.add_argument("--checkpoint", type=str, default=None,help="Path to checkpoint for evaluation")
     
     return parser.parse_args()
 

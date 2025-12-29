@@ -20,14 +20,11 @@ from transformers import LogitsProcessor, PreTrainedTokenizer
 
 class LabelConstrainedLogitsProcessor(LogitsProcessor):
     """
-    A logits processor that constrains generation to valid label tokens only.
-    
-    This processor sets the logits of all tokens except valid label tokens to
-    negative infinity, forcing the model to only output valid labels.
-    
-    Usage:
-        processor = LabelConstrainedLogitsProcessor(tokenizer, ["A", "B", "C", "D", "E"])
-        outputs = model.generate(..., logits_processor=[processor])
+    一种仅将生成内容限制在有效标签标记内的 logits 处理器。
+    该处理器会将除有效标签标记之外的所有标记的 logits 设置为负无穷，从而迫使模型仅输出有效标签。
+    用法：
+    processor = LabelConstrainedLogitsProcessor (tokenizer, ["A", "B", "C", "D", "E"])
+    outputs = model.generate (..., logits_processor=[processor]), max_new_tokens=1
     """
     
     def __init__(

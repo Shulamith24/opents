@@ -13,4 +13,7 @@ data/
 ./__pycache__
 upload_to_huggingface.py
 
-data/
+results/
+
+
+
