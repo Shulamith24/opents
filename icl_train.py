@@ -97,6 +97,19 @@ def parse_args():
     parser.add_argument("--eval_only", action="store_true",help="Only run evaluation (requires checkpoint)")
     parser.add_argument("--checkpoint", type=str, default=None,help="Path to checkpoint for evaluation")
     
+    # Encoder selection (M2: TSLANet)
+    parser.add_argument(
+        "--encoder", type=str, default="transformer_cnn",
+        choices=["transformer_cnn", "tslanet"],
+        help="Encoder type to use"
+    )
+    parser.add_argument(
+        "--tslanet_checkpoint", type=str, default=None,
+        help="Path to TSLANet pretrained checkpoint"
+    )
+    parser.add_argument("--tslanet_depth", type=int, default=2, help="TSLANet depth")
+    parser.add_argument("--tslanet_patch_size", type=int, default=8, help="TSLANet patch size")
+    
     return parser.parse_args()
 
 
@@ -400,6 +413,30 @@ def main():
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
         )
+    
+    # Replace encoder if using TSLANet (M2)
+    if args.encoder == "tslanet":
+        print(f"\n🔄 Replacing encoder with TSLANet...")
+        from model.encoder.TSLANetEncoder import TSLANetEncoder
+        
+        new_encoder = TSLANetEncoder(
+            output_dim=base_model.encoder.output_dim,
+            patch_size=args.tslanet_patch_size,
+            depth=args.tslanet_depth,
+            dropout=0.15,
+        )
+        
+        if args.tslanet_checkpoint:
+            print(f"   Loading pretrained weights from {args.tslanet_checkpoint}")
+            state_dict = torch.load(args.tslanet_checkpoint, map_location="cpu", weights_only=True)
+            # Handle both full checkpoint and state_dict only
+            if "encoder_state" in state_dict:
+                new_encoder.load_state_dict(state_dict["encoder_state"])
+            else:
+                new_encoder.load_state_dict(state_dict)
+        
+        base_model.encoder = new_encoder.to(args.device)
+        print(f"   ✅ TSLANet encoder loaded (depth={args.tslanet_depth}, patch_size={args.tslanet_patch_size})")
     
     # Create datasets
     print(f"\n📊 Creating datasets...")
