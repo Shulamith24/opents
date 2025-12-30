@@ -127,8 +127,22 @@ class UCRDataset(Dataset):
         row    = self.df.iloc[idx]
         feats  = row[self.feature_cols].astype(float).values
         tensor = torch.tensor(feats, dtype=torch.float32)
-        # per-sample z-normalization
-        tensor = (tensor - tensor.mean()) / (tensor.std() + 1e-8)
+        
+        # Handle NaN values (common in variable-length UCR datasets like AllGestureWiimoteX)
+        nan_mask = torch.isnan(tensor)
+        if nan_mask.any():
+            # Use nan-safe statistics for normalization
+            mean_val = torch.nanmean(tensor)
+            # Compute std ignoring NaNs
+            valid_vals = tensor[~nan_mask]
+            std_val = valid_vals.std() if len(valid_vals) > 1 else torch.tensor(1.0)
+            tensor = (tensor - mean_val) / (std_val + 1e-8)
+            # Replace NaN with 0 after normalization (zero-padding)
+            tensor = torch.nan_to_num(tensor, nan=0.0)
+        else:
+            # Standard per-sample z-normalization
+            tensor = (tensor - tensor.mean()) / (tensor.std() + 1e-8)
+        
         label  = int(row[self.label_col])
         return tensor, label
 

@@ -58,7 +58,7 @@ def parse_args():
     
     # Dataset arguments
     parser.add_argument(
-        "--dataset", type=str, default="ECG200",
+        "--dataset", type=str, default="ECG5000",
         help="UCR dataset name (e.g., ECG200, ECG5000)"
     )
     parser.add_argument(
